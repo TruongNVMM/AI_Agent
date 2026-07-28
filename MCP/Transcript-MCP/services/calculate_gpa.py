@@ -16,6 +16,6 @@ def calculate_gpa(courses: list[Course], semester: str) -> dict:
         "semester": semester,
         "gpa": round(points / credits, 2) if credits else 0,
         "credits_counted": credits,
-        "courses": selected,
+        "courses": [c.model_dump() for c in selected],
     }
     

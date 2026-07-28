@@ -27,5 +27,5 @@ def calculate_cpa(courses: list[Course], up_to_semester: str | None = None) -> d
         "up_to_semester": up_to_semester,
         "cpa": round(points / credits, 2) if credits else 0,
         "cumulative_credits": credits,
-        "courses": counted,
+        "courses": [c.model_dump() for c in counted],
     }
