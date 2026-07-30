@@ -62,6 +62,39 @@ flowchart TD
 
 **Deliverables:** Tài liệu yêu cầu (1 trang), golden set (10–20 mẫu), sơ đồ kiến trúc đã chốt (như Phase 0 ở trên).
 
+**Sau khi thực hiện:**
+#### 1. Phạm vi
+- Dạng tài liệu: PDF (Tài liệu trong thư mục data ở thư mục gốc).
+- Ngôn ngữ: Tiếng Việt và Tiếng Anh.
+- Chức năng chính: Hỏi đáp, tóm tắt, tra cứu kèm trích dẫn số trang và tên file.
+#### 2. Tiêu chí thành công (SLA & Metrics)
+- Trích dẫn chính xác số trang ≥ 90% các câu hỏi fact.
+- Không tự bịa thông tin khi tài liệu không đề cập (Zero-hallucination trên câu hỏi ngoài phạm vi).
+- Độ trễ lắp ráp context (truy xuất PDF + lịch sử chat + prompt): < 600ms.
+#### 3. Dữ liệu & Cấu trúc Metadata của Chunk
+Mỗi đoạn văn bản (chunk) trích ra từ PDF sẽ lưu các thông tin:
+```
+{ 
+    "content": "Nội dung văn bản...", 
+    "doc_name": "Huong_dan_su_dung.pdf", 
+    "page_number": 12, 
+    "chunk_id": "doc_12_chunk_3" 
+}
+```
+#### 4. Tech Stack qua các Phase
+
+| Thành phần | Lựa chọn tham khảo trong Plan |
+| :--- | :--- |
+| **Embedding model** | BGE-M3 / multilingual-e5 (hỗ trợ tiếng Việt/Anh tốt), hoặc API Embedding có sẵn |
+| **Vector DB** | pgvector / SQLite-vec (khi làm prototype) → Qdrant / Milvus (khi lên production) |
+| **Keyword search (BM25) + Vector search** | Thư viện rank-bm25 (gọn nhẹ) hoặc Elasticsearch / OpenSearch |
+| **Reranker** | bge-reranker hoặc Cohere rerank |
+| **Compression (Nén context)** | LLMLingua / LLMLingua-2 |
+| **Safety & PII Filter** | Microsoft Presidio + Rule-based regex |
+| **Session & Memory** | Redis (cho session ngắn hạn) + Vector Store riêng (cho memory dài hạn), hoặc dùng thư viện Zep / Mem0 |
+| **Orchestration (Điều phối)** | LangGraph, hoặc tự viết pipeline dạng function chain (chủ động kiểm soát) |
+| **Observability (Giám sát)** | OpenTelemetry (tracing), Langfuse / Phoenix (theo dõi token & LLM) |
+
 ---
 
 ## Phase 1 — Chuẩn bị dữ liệu & Knowledge Base
