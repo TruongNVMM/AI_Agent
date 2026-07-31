@@ -1,14 +1,15 @@
 """
-data_processing — Hybrid PDF → Markdown Pipeline
+data_processing — Hybrid PDF -> Markdown Pipeline
 
 Modules:
-    config          : Cấu hình tập trung (Ollama, DPI, VRAM, paths)
+    config          : Cau hinh tap trung (Ollama, DPI, VRAM, paths)
     models          : Dataclasses (DocumentBlock, PageResult, DocumentResult)
-    layout_detector : Phân loại layout, phân đoạn block, sắp xếp Reading Order
-    vision_client   : Ollama Qwen2-VL HTTP client (resize ảnh, retry)
-    ocr_worker      : Worker OCR với Semaphore chống OOM
-    page_processor  : Điều phối xử lý 1 trang
-    postprocessor   : Sửa hyphenation, lọc header/footer, detect References
-    pipeline        : Điều phối toàn bộ pipeline
+    layout_detector : Phan loai layout, phan doan block, sap xep Reading Order
+    text_extractor  : CPU processor: lam sach text, post-process bang Markdown
+    vision_client   : Ollama Qwen2-VL HTTP client (resize anh, retry)
+    ocr_worker      : Worker OCR voi Semaphore chong OOM
+    page_processor  : Dieu phoi xu ly 1 trang
+    postprocessor   : Sua hyphenation, loc header/footer, detect References
+    pipeline        : Dieu phoi toan bo pipeline
     run             : CLI entry point
 """

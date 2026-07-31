@@ -3,8 +3,8 @@ page_processor.py — Xử lý một trang PDF hoàn chỉnh.
 
 Orchestrate toàn bộ quy trình cho 1 trang:
   1. Segment blocks (layout_detector)
-  2. CPU blocks đã có kết quả ngay
-  3. Gửi OCR blocks vào ocr_worker
+  2. CPU blocks: làm sạch text + post-process bảng (text_extractor)
+  3. Gửi OCR blocks vào ocr_worker (Ollama Qwen2-VL)
   4. Reassemble theo block_id → markdown đúng thứ tự
 """
 
@@ -17,6 +17,7 @@ import fitz
 from .layout_detector import segment_page
 from .models import BlockType, DocumentBlock, PageResult
 from .ocr_worker import process_ocr_blocks
+from .text_extractor import process_cpu_blocks
 
 log = logging.getLogger(__name__)
 
@@ -50,8 +51,8 @@ def process_page(
         log.debug("[%s] Trang %d không có block nào.", doc_name, page_num)
         return PageResult(page_num=page_num, doc_name=doc_name, layout=layout, blocks=[])
 
-    # ── 2. CPU blocks (text, table) đã có kết quả từ layout_detector ─────────
-    # Không cần xử lý thêm; markdown_result đã được set trong segment_page.
+    # ── 2. CPU blocks: làm sạch text và post-process bảng ─────────────────────
+    blocks = process_cpu_blocks(blocks)
 
     # ── 3. Ghi ảnh ra đĩa (để debug) & Gửi IMAGE/MATH blocks sang Ollama OCR ──
     ocr_count = sum(1 for b in blocks if b.needs_ocr)
