@@ -38,6 +38,9 @@ class DocumentBlock:
     # Ảnh crop (bytes PNG) cho IMAGE/MATH — được set bởi layout_detector:
     crop_bytes:     bytes | None = None
 
+    # Đường dẫn tương đối đến file ảnh đã lưu (cho Markdown link ![alt](path)):
+    image_rel_path: str | None = None
+
     # Kết quả cuối cùng sau toàn bộ xử lý — được set bởi text_extractor / ocr_worker:
     markdown_result: str = ""
 

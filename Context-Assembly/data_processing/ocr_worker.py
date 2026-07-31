@@ -49,18 +49,25 @@ def _ocr_single_block(block: DocumentBlock) -> DocumentBlock:
     with _OLLAMA_SEMAPHORE:
         result = call_qwen2_vl(block.crop_bytes, mode)
 
-    # Fallback nếu OCR thất bại
+    # Định dạng kết quả cuối cùng
     if not result or result.startswith("[OCR Failed"):
         log.warning(
-            "OCR thất bại: Trang %d Block #%d — dùng placeholder",
+            "OCR thất bại: Trang %d Block #%d — dùng fallback",
             block.page_num, block.block_id,
         )
         if block.block_type == BlockType.MATH:
-            block.markdown_result = f"$[Công thức trang {block.page_num}]$"
+            block.markdown_result = f"$[Formula trang {block.page_num} #{block.block_id}]$"
         else:
-            block.markdown_result = f"> [Hình ảnh trang {block.page_num} — không thể OCR]"
+            if block.image_rel_path:
+                block.markdown_result = f"![Image p{block.page_num} #{block.block_id}]({block.image_rel_path})"
+            else:
+                block.markdown_result = f"> [Hình ảnh trang {block.page_num} — không thể OCR]"
     else:
-        block.markdown_result = result
+        if block.block_type == BlockType.IMAGE and block.image_rel_path:
+            # Nhúng cả thẻ ảnh ![alt](path) LẪN đoạn mô tả OCR bên dưới
+            block.markdown_result = f"![Image p{block.page_num} #{block.block_id}]({block.image_rel_path})\n\n> **Mô tả ảnh:** {result}"
+        else:
+            block.markdown_result = result
 
     block.is_done = True
     return block

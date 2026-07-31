@@ -54,15 +54,18 @@ def process_page(
     # ── 2. CPU blocks: làm sạch text và post-process bảng ─────────────────────
     blocks = process_cpu_blocks(blocks)
 
-    # ── 3. Ghi ảnh ra đĩa (để debug) & Gửi IMAGE/MATH blocks sang Ollama OCR ──
+    # ── 3. Ghi ảnh ra đĩa & Gửi IMAGE/MATH blocks sang Ollama OCR ──────────────
     ocr_count = sum(1 for b in blocks if b.needs_ocr)
     if ocr_count > 0:
         from .config import IMAGE_DIR
-        # Lưu các ảnh cần OCR ra thư mục images/ để người dùng kiểm tra
+        # Lưu các ảnh cần OCR ra thư mục output/images/ và set image_rel_path
         for b in blocks:
             if b.needs_ocr and b.crop_bytes:
-                img_path = IMAGE_DIR / f"{doc_name.replace('.pdf', '')}_p{page_num}_b{b.block_id}_{b.block_type.name.lower()}.png"
+                clean_doc_name = doc_name.replace('.pdf', '')
+                img_filename   = f"{clean_doc_name}_p{page_num}_b{b.block_id}_{b.block_type.name.lower()}.png"
+                img_path       = IMAGE_DIR / img_filename
                 img_path.write_bytes(b.crop_bytes)
+                b.image_rel_path = f"images/{img_filename}"
 
     if ocr_count > 0 and not skip_ocr:
         log.info("[%s] Trang %d: gửi %d block(s) sang Ollama OCR...", doc_name, page_num, ocr_count)
@@ -71,12 +74,13 @@ def process_page(
         log.info("[%s] Trang %d: bỏ qua OCR (skip_ocr=True), dùng placeholder.", doc_name, page_num)
         for b in blocks:
             if b.needs_ocr:
-                placeholder = (
-                    f"$[Formula block #{b.block_id}]$"
-                    if b.block_type == BlockType.MATH
-                    else f"> [Image block #{b.block_id}]"
-                )
-                b.markdown_result = placeholder
+                if b.block_type == BlockType.MATH:
+                    b.markdown_result = f"$[Formula block #{b.block_id}]$"
+                else:
+                    if b.image_rel_path:
+                        b.markdown_result = f"![Image p{b.page_num} #{b.block_id}]({b.image_rel_path})"
+                    else:
+                        b.markdown_result = f"> [Image block #{b.block_id}]"
                 b.is_done = True
 
     # ── 4. Đảm bảo tất cả blocks đều có kết quả ─────────────────────────────
