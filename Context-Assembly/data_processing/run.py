@@ -137,7 +137,7 @@ def main() -> None:
     if not args.skip_ocr:
         log.info(
             "Make sure Ollama is running and model is pulled:\n"
-            "  > ollama pull qwen2-vl:7b-q4_K_M\n"
+            "  > ollama pull qwen2-vl:7b\n"
             "  > set OLLAMA_FLASH_ATTENTION=1 && ollama serve"
         )
 

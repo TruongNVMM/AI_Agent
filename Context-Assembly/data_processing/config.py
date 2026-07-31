@@ -29,9 +29,9 @@ IMAGE_DIR   = OUTPUT_DIR / "images"   # thư mục lưu ảnh crop trung gian
 # ─── Ollama ─────────────────────────────────────────────────────────────────
 OLLAMA_BASE_URL    = "http://localhost:11434"
 
-# Dùng bản 4-bit quantized: ~4.5 GB VRAM, ít hơn 3x so với FP16 (~14 GB).
-# Kéo về bằng: ollama pull qwen2-vl:7b-q4_K_M
-QWEN2_VL_MODEL     = "qwen2-vl:7b-q4_K_M"
+# Tên model chuẩn trên thư viện Ollama: "qwen2-vl:7b" (hoặc "qwen2.5vl:7b")
+# Mặc định Ollama đã tự động dùng bản 4-bit quantized (Q4_K_M ~4.5 GB VRAM).
+QWEN2_VL_MODEL     = "qwen2-vl:7b"
 
 # Cấu hình inference cho Ollama (gửi kèm mỗi request trong field "options")
 OLLAMA_OPTIONS: dict = {
@@ -43,8 +43,9 @@ OLLAMA_OPTIONS: dict = {
     # Nếu OOM, hạ xuống 28 (offload 28/36 layers) để lưu 1-2 GB VRAM.
     "num_gpu": -1,
 
-    # Số thread CPU dùng cho các layer không offload lên GPU.
-    "num_thread": 4,
+    # Số thread CPU dùng cho Ollama (đã tối ưu cho CPU 12 lõi: dùng 8 threads
+    # để vừa tăng tốc vừa chừa 4 lõi cho hệ điều hành và CPU PDF Workers).
+    "num_thread": 8,
 
     # Giảm randomness — với OCR/mô tả ảnh thường tốt hơn khi temperature thấp.
     "temperature": 0.1,
@@ -84,9 +85,9 @@ OCR_MIN_CROP_AREA = 40 * 40  # pixel^2
 
 # ─── CPU xử lý song song ─────────────────────────────────────────────────────
 # Số process Python xử lý song song các file PDF khác nhau.
-# Mỗi process tốn ~200 MB RAM (PyMuPDF + PIL).
-# RAM hiện tại 7 GB → đặt tối đa 4 worker.
-CPU_PDF_WORKERS = 4
+# Đã tối ưu cho CPU 12 lõi: đặt 6 workers (mỗi process tốn ~150-200 MB RAM).
+# 6 workers giúp render và phân loại layout đồng thời 6 file PDF cực nhanh.
+CPU_PDF_WORKERS = 6
 
 # ─── Layout detection ────────────────────────────────────────────────────────
 # Ngưỡng (points) của vùng header/footer sẽ bị lọc bỏ.

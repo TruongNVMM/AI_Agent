@@ -18,9 +18,8 @@ Tải từ [ollama.com](https://ollama.com) và cài đặt.
 ### 2. Pull model Qwen2-VL (QUAN TRỌNG: dùng bản q4_K_M)
 
 ```bash
-# Bản 4-bit quantized: ~4.5 GB VRAM — an toàn trên RTX 2080 Ti (11 GB)
-# KHÔNG dùng qwen2-vl:7b (FP16 ~14 GB → OOM)
-ollama pull qwen2-vl:7b-q4_K_M
+# Model qwen2-vl:7b mặc định trên Ollama đã được quantized 4-bit (~4.5 GB VRAM)
+ollama pull qwen2-vl:7b
 ```
 
 ### 3. Khởi động Ollama với cấu hình chống OOM

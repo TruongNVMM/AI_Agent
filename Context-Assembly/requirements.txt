@@ -1,0 +1,17 @@
+# =================================================================
+# PDF -> Markdown Hybrid Pipeline Dependencies
+# =================================================================
+
+# Core PDF & Image Processing
+PyMuPDF>=1.24.0
+Pillow>=10.0.0
+
+# HTTP Communication with Ollama API
+requests>=2.31.0
+
+# System & Hardware Utilities
+psutil>=5.9.0
+tqdm>=4.66.0
+
+# PyTorch (Optional - nếu chạy local GPU inference hoặc PyTorch AMP)
+# torch>=2.0.0

@@ -53,8 +53,16 @@ def process_page(
     # ── 2. CPU blocks (text, table) đã có kết quả từ layout_detector ─────────
     # Không cần xử lý thêm; markdown_result đã được set trong segment_page.
 
-    # ── 3. Gửi IMAGE/MATH blocks sang Ollama OCR ─────────────────────────────
+    # ── 3. Ghi ảnh ra đĩa (để debug) & Gửi IMAGE/MATH blocks sang Ollama OCR ──
     ocr_count = sum(1 for b in blocks if b.needs_ocr)
+    if ocr_count > 0:
+        from .config import IMAGE_DIR
+        # Lưu các ảnh cần OCR ra thư mục images/ để người dùng kiểm tra
+        for b in blocks:
+            if b.needs_ocr and b.crop_bytes:
+                img_path = IMAGE_DIR / f"{doc_name.replace('.pdf', '')}_p{page_num}_b{b.block_id}_{b.block_type.name.lower()}.png"
+                img_path.write_bytes(b.crop_bytes)
+
     if ocr_count > 0 and not skip_ocr:
         log.info("[%s] Trang %d: gửi %d block(s) sang Ollama OCR...", doc_name, page_num, ocr_count)
         blocks = process_ocr_blocks(blocks)
