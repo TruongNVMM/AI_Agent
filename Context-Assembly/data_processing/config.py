@@ -106,7 +106,7 @@ TWO_COLUMN_MIN_BLOCKS_PER_COL = 3
 MATH_UNICODE_CHARS = set("∑∂∇√≈≠≤≥±×÷∫∏∀∃∈∉⊂⊃∪∩→⇒⟨⟩‖‹›αβγδεζηθλμπρστφψω")
 
 # Nếu block text có tỉ lệ ký tự toán/tổng ký tự vượt ngưỡng này → 'math'.
-MATH_CHAR_RATIO_THRESHOLD = 0.08
+MATH_CHAR_RATIO_THRESHOLD = 0.03
 
 # ─── Postprocessor ───────────────────────────────────────────────────────────
 # Số trang cuối tính từ References section sẽ bị đánh dấu is_references=True.
