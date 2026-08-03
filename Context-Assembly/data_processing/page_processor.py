@@ -15,6 +15,7 @@ import logging
 import fitz
 
 from .layout_detector import segment_page
+from .markdown_utils import markdown_image_for_block
 from .models import BlockType, DocumentBlock, PageResult
 from .ocr_worker import process_ocr_blocks
 from .text_extractor import process_cpu_blocks
@@ -78,7 +79,11 @@ def process_page(
                     b.markdown_result = f"$[Formula block #{b.block_id}]$"
                 else:
                     if b.image_rel_path:
-                        b.markdown_result = f"![Image p{b.page_num} #{b.block_id}]({b.image_rel_path})"
+                        b.markdown_result = markdown_image_for_block(
+                            b.image_rel_path,
+                            b.page_num,
+                            b.block_id,
+                        )
                     else:
                         b.markdown_result = f"> [Image block #{b.block_id}]"
                 b.is_done = True

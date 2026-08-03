@@ -13,8 +13,10 @@ layout: "1-column"
 Generative Adversarial Nets
 
 Ian J. Goodfellow, Jean Pouget-Abadie∗, Mehdi Mirza, Bing Xu, David Warde-Farley,
+
 Sherjil Ozair†, Aaron Courville, Yoshua Bengio‡
 D´epartement d’informatique et de recherche op´erationnelle
+
 Universit´e de Montr´eal
 Montr´eal, QC H3C 3J7
 
@@ -75,10 +77,12 @@ The adversarial modeling framework is most straightforward to apply when the mod
 
 In other words, D and G play the following two-player minimax game with value function V (G, D):
 
-min
-G max
 D V (D, G) = Ex∼pdata(x)[log D(x)] + Ez∼pz(z)[log(1 −D(G(z)))].
 (1)
+
+min
+
+G max
 
 In the next section, we present a theoretical analysis of adversarial nets, essentially showing that the training criterion allows one to recover the data generating distribution as G and D are given enough capacity, i.e., in the non-parametric limit. See Figure 1 for a less formal, more pedagogical explanation of the approach. In practice, we must implement the game using an iterative, numerical approach. Optimizing D to completion in the inner loop of training is computationally prohibitive, and on ﬁnite datasets would result in overﬁtting. Instead, we alternate between k steps of optimizing
 D and one step of optimizing G. This results in D being maintained near its optimal solution, so long as G changes slowly enough. This strategy is analogous to the way that SML/PCD [31, 29]
@@ -101,6 +105,7 @@ Figure 1: Generative adversarial nets are trained by simultaneously updating the
 (D, blue, dashed line) so that it discriminates between samples from the data generating distribution (black, dotted line) px from those of the generative distribution pg (G) (green, solid line). The lower horizontal line is the domain from which z is sampled, in this case uniformly. The horizontal line above is part of the domain of x. The upward arrows show how the mapping x = G(z) imposes the non-uniform distribution pg on transformed samples. G contracts in regions of high density and expands in regions of low density of pg. (a)
 Consider an adversarial pair near convergence: pg is similar to pdata and D is a partially accurate classiﬁer.
 (b) In the inner loop of the algorithm D is trained to discriminate samples from data, converging to D∗(x) =
+
 pdata(x)
 pdata(x)+pg(x). (c) After an update to G, gradient of D has guided G(z) to ﬂow to regions that are more likely to be classiﬁed as data. (d) After several steps of training, if G and D have enough capacity, they will reach a point at which both cannot improve because pg = pdata. The discriminator is unable to differentiate between the two distributions, i.e. D(x) = 1
 
@@ -131,18 +136,32 @@ for k steps do
 m
 X
 
-$[Formula block #5]$
+1
+m
 
-h log D
+h
+
 
+
 x(i)
-+ log
+
 
+
 1 −D
 
-G
+
 
+
 z(i)i
+
+∇θd
+
+log D
+
++ log
+
+G
+
 .
 
 i=1
@@ -154,17 +173,27 @@ end for
 m
 X
 
-$[Formula block #10]$
+1
+m
 
-i=1
+∇θg
+
 log
+
 
+
 1 −D
 
+
 G
+
 
+
 z(i)
+
 .
+
+i=1
 
 end for
 The gradient-based updates can use any standard gradient-based learning rule. We used momentum in our experiments.
@@ -176,27 +205,37 @@ We ﬁrst consider the optimal discriminator D for any given generator G.
 
 Proposition 1. For G ﬁxed, the optimal discriminator D is
 
-D∗
 G(x) =
 pdata(x)
 pdata(x) + pg(x)
 (2)
 
+D∗
+
 Proof. The training criterion for the discriminator D, given any generator G, is to maximize the quantity V (G, D)
 
+Z
+
+Z
+
 V (G, D) =
-Z
 
-x pdata(x) log(D(x))dx +
-Z
+pdata(x) log(D(x))dx +
 
-z pz(z) log(1 −D(g(z)))dz
+pz(z) log(1 −D(g(z)))dz
+
+x
+
+z
+
+Z
 
 =
-Z
 
-x pdata(x) log(D(x)) + pg(x) log(1 −D(x))dx
+pdata(x) log(D(x)) + pg(x) log(1 −D(x))dx
 (3)
+
+x
 
 For any (a, b) ∈R2 \ {0, 0}, the function y →a log(y) + b log(1 −y) achieves its maximum in
 [0, 1] at a
@@ -207,30 +246,38 @@ timating the conditional probability P(Y = y|x), where Y indicates whether x com
 (with y = 1) or from pg (with y = 0). The minimax game in Eq. 1 can now be reformulated as:
 
 C(G) = max
+
 D V (G, D)
 
 =Ex∼pdata[log D∗
-G(x)] + Ez∼pz[log(1 −D∗
+
 G(G(z)))]
 (4)
 =Ex∼pdata[log D∗
+
+G(x)] + Ez∼pz[log(1 −D∗
+
 G(x)] + Ex∼pg[log(1 −D∗
+
 G(x))]
 
 
+
 log pdata(x)
 Pdata(x) + pg(x)
 
 
-+ Ex∼pg
 
 
+
 log pg(x)
 pdata(x) + pg(x)
 
 
 
 =Ex∼pdata
+
++ Ex∼pg
 
 ---
 
@@ -239,37 +286,44 @@ pdata(x) + pg(x)
 Theorem 1. The global minimum of the virtual training criterion C(G) is achieved if and only if pg = pdata. At that point, C(G) achieves the value −log 4.
 
 Proof. For pg = pdata, D∗
-G(x) = 1
 
 2, we
 ﬁnd C(G) = log 1
+
+G(x) = 1
 
 2, (consider Eq. 2). Hence, by inspecting Eq. 4 at D∗
 G(x) = 1
 
 2 + log 1
-
 2 = −log 4. To see that this is the best possible value of C(G), reached only for pg = pdata, observe that
 
 Ex∼pdata [−log 2] + Ex∼pg [−log 2] = −log 4
 
 and that by subtracting this expression from C(G) = V (D∗
+
 G, G), we obtain:
 
-C(G) = −log(4) + KL
 
+
+pdata + pg
+
+
+
+
+
+pdata + pg
+
+
+
+C(G) = −log(4) + KL
+
 pdata
 
-pdata + pg
-
-
 + KL
-
+
 pg
 
-pdata + pg
-
-
 (5)
 
 2
@@ -290,7 +344,9 @@ Convergence of Algorithm 1
 Proposition 2. If G and D have enough capacity, and at each step of Algorithm 1, the discriminator is allowed to reach its optimum given G, and pg is updated so as to improve the criterion
 
 Ex∼pdata[log D∗
+
 G(x)] + Ex∼pg[log(1 −D∗
+
 G(x))]
 
 then pg converges to pdata
@@ -324,16 +380,16 @@ of the Gaussians was obtained by cross validation on the validation set. This pr
 
 In Figures 2 and 3 we show samples drawn from the generator net after training. While we make no claim that these samples are better than samples generated by existing methods, we believe that these samples are at least competitive with the better generative models in the literature and highlight the potential of the adversarial framework.
 
-![Image p6 #4](images/Generative-Adversarial-Nets (GAN)_p6_b4_image.png)
+![Image p6 #4](images/Generative-Adversarial-Nets%20%28GAN%29_p6_b4_image.png)
 
-![Image p6 #5](images/Generative-Adversarial-Nets (GAN)_p6_b5_image.png)
+![Image p6 #5](images/Generative-Adversarial-Nets%20%28GAN%29_p6_b5_image.png)
 
 a)
 b)
 
-![Image p6 #7](images/Generative-Adversarial-Nets (GAN)_p6_b7_image.png)
+![Image p6 #7](images/Generative-Adversarial-Nets%20%28GAN%29_p6_b7_image.png)
 
-![Image p6 #8](images/Generative-Adversarial-Nets (GAN)_p6_b8_image.png)
+![Image p6 #8](images/Generative-Adversarial-Nets%20%28GAN%29_p6_b8_image.png)
 
 c)
 d)
@@ -345,9 +401,9 @@ Moreover, these samples are uncorrelated because the sampling process does not d
 
 <!-- page 7 -->
 
-![Image p7 #0](images/Generative-Adversarial-Nets (GAN)_p7_b0_image.png)
+![Image p7 #0](images/Generative-Adversarial-Nets%20%28GAN%29_p7_b0_image.png)
 
-![Image p7 #1](images/Generative-Adversarial-Nets (GAN)_p7_b1_image.png)
+![Image p7 #1](images/Generative-Adversarial-Nets%20%28GAN%29_p7_b1_image.png)
 
 Figure 3: Digits obtained by linearly interpolating between coordinates in z space of the full model.
 
@@ -433,45 +489,62 @@ Deep Learning. Finally, we would like to thank Les Trois Brasseurs for stimulati
 References
 
 [1] Bastien, F., Lamblin, P., Pascanu, R., Bergstra, J., Goodfellow, I. J., Bergeron, A., Bouchard, N., and
+
 Bengio, Y. (2012). Theano: new features and speed improvements. Deep Learning and Unsupervised
 Feature Learning NIPS 2012 Workshop.
 
 [2] Bengio, Y. (2009). Learning deep architectures for AI. Now Publishers.
 
 [3] Bengio, Y., Mesnil, G., Dauphin, Y., and Rifai, S. (2013a). Better mixing via deep representations. In
+
 ICML’13.
 
-[4] Bengio, Y., Yao, L., Alain, G., and Vincent, P. (2013b). Generalized denoising auto-encoders as generative models. In NIPS26. Nips Foundation.
+[4] Bengio, Y., Yao, L., Alain, G., and Vincent, P. (2013b). Generalized denoising auto-encoders as generative
 
-[5] Bengio, Y., Thibodeau-Laufer, E., and Yosinski, J. (2014a). Deep generative stochastic networks trainable by backprop. In ICML’14.
+models. In NIPS26. Nips Foundation.
+
+[5] Bengio, Y., Thibodeau-Laufer, E., and Yosinski, J. (2014a). Deep generative stochastic networks trainable
+
+by backprop. In ICML’14.
 
 [6] Bengio, Y., Thibodeau-Laufer, E., Alain, G., and Yosinski, J. (2014b). Deep generative stochastic networks trainable by backprop. In Proceedings of the 30th International Conference on Machine Learning
 (ICML’14).
 
 [7] Bergstra, J., Breuleux, O., Bastien, F., Lamblin, P., Pascanu, R., Desjardins, G., Turian, J., Warde-Farley,
+
 D., and Bengio, Y. (2010). Theano: a CPU and GPU math expression compiler. In Proceedings of the
 Python for Scientiﬁc Computing Conference (SciPy). Oral Presentation.
 
 [8] Breuleux, O., Bengio, Y., and Vincent, P. (2011). Quickly generating representative samples from an
+
 RBM-derived process. Neural Computation, 23(8), 2053–2073.
 
 [9] Glorot, X., Bordes, A., and Bengio, Y. (2011). Deep sparse rectiﬁer neural networks. In AISTATS’2011.
 
 [10] Goodfellow, I. J., Warde-Farley, D., Mirza, M., Courville, A., and Bengio, Y. (2013a). Maxout networks.
+
 In ICML’2013.
 
-[11] Goodfellow, I. J., Mirza, M., Courville, A., and Bengio, Y. (2013b). Multi-prediction deep Boltzmann machines. In NIPS’2013.
+[11] Goodfellow, I. J., Mirza, M., Courville, A., and Bengio, Y. (2013b). Multi-prediction deep Boltzmann
+
+machines. In NIPS’2013.
 
 [12] Goodfellow, I. J., Warde-Farley, D., Lamblin, P., Dumoulin, V., Mirza, M., Pascanu, R., Bergstra,
+
 J., Bastien, F., and Bengio, Y. (2013c). Pylearn2: a machine learning research library. arXiv preprint arXiv:1308.4214.
 
-[13] Gutmann, M. and Hyvarinen, A. (2010). Noise-contrastive estimation: A new estimation principle for unnormalized statistical models. In AISTATS’2010.
+[13] Gutmann, M. and Hyvarinen, A. (2010). Noise-contrastive estimation: A new estimation principle for
+
+unnormalized statistical models. In AISTATS’2010.
 
 [14] Hinton, G., Deng, L., Dahl, G. E., Mohamed, A., Jaitly, N., Senior, A., Vanhoucke, V., Nguyen, P.,
+
 Sainath, T., and Kingsbury, B. (2012a). Deep neural networks for acoustic modeling in speech recognition.
 IEEE Signal Processing Magazine, 29(6), 82–97.
 
-[15] Hinton, G. E., Dayan, P., Frey, B. J., and Neal, R. M. (1995). The wake-sleep algorithm for unsupervised neural networks. Science, 268, 1558–1161.
+[15] Hinton, G. E., Dayan, P., Frey, B. J., and Neal, R. M. (1995). The wake-sleep algorithm for unsupervised
+
+neural networks. Science, 268, 1558–1161.
 
 ---
 
@@ -480,41 +553,64 @@ IEEE Signal Processing Magazine, 29(6), 82–97.
 <!-- references section -->
 
 [16] Hinton, G. E., Osindero, S., and Teh, Y. (2006). A fast learning algorithm for deep belief nets. Neural
+
 Computation, 18, 1527–1554.
 
-[17] Hinton, G. E., Srivastava, N., Krizhevsky, A., Sutskever, I., and Salakhutdinov, R. (2012b). Improving neural networks by preventing co-adaptation of feature detectors. Technical report, arXiv:1207.0580.
+[17] Hinton, G. E., Srivastava, N., Krizhevsky, A., Sutskever, I., and Salakhutdinov, R. (2012b). Improving
+
+neural networks by preventing co-adaptation of feature detectors. Technical report, arXiv:1207.0580.
 
 [18] Hyv¨arinen, A. (2005). Estimation of non-normalized statistical models using score matching. J. Machine
+
 Learning Res., 6.
 
-[19] Jarrett, K., Kavukcuoglu, K., Ranzato, M., and LeCun, Y. (2009). What is the best multi-stage architecture for object recognition? In Proc. International Conference on Computer Vision (ICCV’09), pages 2146–2153.
+[19] Jarrett, K., Kavukcuoglu, K., Ranzato, M., and LeCun, Y. (2009). What is the best multi-stage architecture
+
+for object recognition? In Proc. International Conference on Computer Vision (ICCV’09), pages 2146–2153.
 IEEE.
 
 [20] Kingma, D. P. and Welling, M. (2014). Auto-encoding variational bayes. In Proceedings of the International Conference on Learning Representations (ICLR).
 
-[21] Krizhevsky, A. and Hinton, G. (2009). Learning multiple layers of features from tiny images. Technical report, University of Toronto.
+[21] Krizhevsky, A. and Hinton, G. (2009). Learning multiple layers of features from tiny images. Technical
 
-[22] Krizhevsky, A., Sutskever, I., and Hinton, G. (2012). ImageNet classiﬁcation with deep convolutional neural networks. In NIPS’2012.
+report, University of Toronto.
 
-[23] LeCun, Y., Bottou, L., Bengio, Y., and Haffner, P. (1998). Gradient-based learning applied to document recognition. Proceedings of the IEEE, 86(11), 2278–2324.
+[22] Krizhevsky, A., Sutskever, I., and Hinton, G. (2012). ImageNet classiﬁcation with deep convolutional
 
-[24] Rezende, D. J., Mohamed, S., and Wierstra, D. (2014). Stochastic backpropagation and approximate inference in deep generative models. Technical report, arXiv:1401.4082.
+neural networks. In NIPS’2012.
 
-[25] Rifai, S., Bengio, Y., Dauphin, Y., and Vincent, P. (2012). A generative process for sampling contractive auto-encoders. In ICML’12.
+[23] LeCun, Y., Bottou, L., Bengio, Y., and Haffner, P. (1998). Gradient-based learning applied to document
+
+recognition. Proceedings of the IEEE, 86(11), 2278–2324.
+
+[24] Rezende, D. J., Mohamed, S., and Wierstra, D. (2014). Stochastic backpropagation and approximate
+
+inference in deep generative models. Technical report, arXiv:1401.4082.
+
+[25] Rifai, S., Bengio, Y., Dauphin, Y., and Vincent, P. (2012). A generative process for sampling contractive
+
+auto-encoders. In ICML’12.
 
 [26] Salakhutdinov, R. and Hinton, G. E. (2009). Deep Boltzmann machines. In AISTATS’2009, pages 448–
+
 455.
 
 [27] Smolensky, P. (1986). Information processing in dynamical systems: Foundations of harmony theory. In
+
 D. E. Rumelhart and J. L. McClelland, editors, Parallel Distributed Processing, volume 1, chapter 6, pages
 194–281. MIT Press, Cambridge.
 
 [28] Susskind, J., Anderson, A., and Hinton, G. E. (2010). The Toronto face dataset. Technical Report UTML
+
 TR 2010-001, U. Toronto.
 
-[29] Tieleman, T. (2008). Training restricted Boltzmann machines using approximations to the likelihood gradient. In W. W. Cohen, A. McCallum, and S. T. Roweis, editors, ICML 2008, pages 1064–1071. ACM.
+[29] Tieleman, T. (2008). Training restricted Boltzmann machines using approximations to the likelihood
 
-[30] Vincent, P., Larochelle, H., Bengio, Y., and Manzagol, P.-A. (2008). Extracting and composing robust features with denoising autoencoders. In ICML 2008.
+gradient. In W. W. Cohen, A. McCallum, and S. T. Roweis, editors, ICML 2008, pages 1064–1071. ACM.
+
+[30] Vincent, P., Larochelle, H., Bengio, Y., and Manzagol, P.-A. (2008). Extracting and composing robust
+
+features with denoising autoencoders. In ICML 2008.
 
 [31] Younes, L. (1999).
 On the convergence of Markovian stochastic algorithms with rapidly decreasing ergodicity rates. Stochastics and Stochastic Reports, 65(3), 177–228.

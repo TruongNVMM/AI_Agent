@@ -16,6 +16,7 @@ from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from typing import Literal
 
 from .config import OCR_CONCURRENT_REQUESTS
+from .markdown_utils import markdown_image_for_block
 from .models import BlockType, DocumentBlock
 from .vision_client import call_qwen2_vl
 
@@ -59,13 +60,22 @@ def _ocr_single_block(block: DocumentBlock) -> DocumentBlock:
             block.markdown_result = f"$[Formula trang {block.page_num} #{block.block_id}]$"
         else:
             if block.image_rel_path:
-                block.markdown_result = f"![Image p{block.page_num} #{block.block_id}]({block.image_rel_path})"
+                block.markdown_result = markdown_image_for_block(
+                    block.image_rel_path,
+                    block.page_num,
+                    block.block_id,
+                )
             else:
                 block.markdown_result = f"> [Hình ảnh trang {block.page_num} — không thể OCR]"
     else:
         if block.block_type == BlockType.IMAGE and block.image_rel_path:
             # Nhúng cả thẻ ảnh ![alt](path) LẪN đoạn mô tả OCR bên dưới
-            block.markdown_result = f"![Image p{block.page_num} #{block.block_id}]({block.image_rel_path})\n\n> **Mô tả ảnh:** {result}"
+            image_md = markdown_image_for_block(
+                block.image_rel_path,
+                block.page_num,
+                block.block_id,
+            )
+            block.markdown_result = f"{image_md}\n\n> **Mô tả ảnh:**\n>\n> {result.strip()}"
         else:
             block.markdown_result = result
 
