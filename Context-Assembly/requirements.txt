@@ -1,17 +1,21 @@
-# =================================================================
-# PDF -> Markdown Hybrid Pipeline Dependencies
-# =================================================================
+# Dependencies cho PDF → Markdown pipeline dùng MinerU
+# RTX 2080 Ti (CUDA 11.x / 12.x)
 
-# Core PDF & Image Processing
-PyMuPDF>=1.24.0
-Pillow>=10.0.0
+# ─── MinerU core ──────────────────────────────────────────────────────────────
+magic-pdf[full]>=0.9.0          # MinerU với đầy đủ model (layout + OCR)
 
-# HTTP Communication with Ollama API
-requests>=2.31.0
+# ─── PDF processing ───────────────────────────────────────────────────────────
+PyMuPDF>=1.24.0                 # Đọc/chia tách PDF (fitz)
 
-# System & Hardware Utilities
-psutil>=5.9.0
-tqdm>=4.66.0
+# ─── PyTorch (CUDA) ───────────────────────────────────────────────────────────
+# Cài bằng lệnh riêng (xem README), không cài qua pip install -r vì cần chọn CUDA version
+# torch>=2.0.0
+# torchvision>=0.15.0
 
-# PyTorch (Optional - nếu chạy local GPU inference hoặc PyTorch AMP)
-torch>=2.0.0
+# ─── OCR backends ────────────────────────────────────────────────────────────
+paddlepaddle-gpu                 # PaddleOCR GPU backend (MinerU dùng mặc định)
+paddleocr>=2.7.0
+
+# ─── Utilities ────────────────────────────────────────────────────────────────
+tqdm>=4.66.0                     # Progress bar
+rich>=13.0.0                     # Màu đẹp trong terminal (tùy chọn)
