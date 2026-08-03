@@ -39,7 +39,7 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 ### 2. Cài MinerU và dependencies
 
 ```bash
-pip install -r pdf2markdown/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 3. Tải model MinerU lần đầu
