@@ -12,9 +12,11 @@ from pathlib import Path
 class BlockType(str, Enum):
     """Loại của từng vùng nội dung trong một trang PDF."""
     TEXT        = "text"         # Đoạn văn thuần — xử lý trên CPU
-    TABLE       = "table"        # Bảng biểu — CPU detect + render Markdown
-    IMAGE       = "image"        # Hình ảnh / đồ thị — gửi Qwen2-VL
-    MATH        = "math"         # Công thức toán — gửi Qwen2-VL
+    TABLE       = "table"        # Bảng biểu — CPU detect + render Markdown hoặc LaTeX tabular
+    IMAGE       = "image"        # Hình ảnh đơn thuần — crop PNG + basic caption
+    FIGURE      = "figure"       # Đồ thị / biểu đồ / diagram — crop + caption + data table
+    MATH        = "math"         # Công thức toán — gửi Qwen2-VL → LaTeX
+    ALGORITHM   = "algorithm"    # Pseudocode / Algorithm box — gửi Qwen2-VL → fenced code
     UNKNOWN     = "unknown"      # Không xác định, bỏ qua
 
 
@@ -47,6 +49,23 @@ class DocumentBlock:
     # True nếu block này đã xử lý xong (dùng để theo dõi progress):
     is_done:        bool = False
 
+    # ─── Thông tin font (mới) ────────────────────────────────────────────
+    # Cấp độ heading nếu block này là tiêu đề: 1=H1, 2=H2, 3=H3, None=không phải heading
+    heading_level:  int | None = None
+
+    # Font size trung bình của block (points) — dùng để detect heading và math
+    font_size:      float | None = None
+
+    # Có chứa inline math hay không (một số span trong block dùng math font)
+    has_inline_math: bool = False
+
+    # Mode OCR được dùng khi gửi Qwen2-VL: "math" | "table" | "figure" | "algorithm" | "text"
+    # Được set bởi layout_detector dựa trên block_type và đặc điểm block.
+    ocr_mode:       str = "text"
+
+    # Caption cho block FIGURE / TABLE / ALGORITHM — trích từ text liền kề
+    caption:        str = ""
+
     @property
     def width(self) -> float:
         return self.bbox[2] - self.bbox[0]
@@ -61,7 +80,12 @@ class DocumentBlock:
 
     @property
     def needs_ocr(self) -> bool:
-        return self.block_type in (BlockType.IMAGE, BlockType.MATH)
+        return self.block_type in (
+            BlockType.IMAGE,
+            BlockType.FIGURE,
+            BlockType.MATH,
+            BlockType.ALGORITHM,
+        )
 
 
 @dataclass

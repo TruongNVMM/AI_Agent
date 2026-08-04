@@ -100,13 +100,100 @@ TWO_COLUMN_GUTTER_PX = 20
 # Số lượng block tối thiểu để xem là 2 cột hợp lệ (tránh nhận sai 1 cột).
 TWO_COLUMN_MIN_BLOCKS_PER_COL = 3
 
-# ─── Phân loại block ─────────────────────────────────────────────────────────
-# Ký hiệu Unicode toán học — nếu block text chứa bất kỳ ký tự nào,
-# sẽ được xếp vào loại 'math' để gửi OCR.
-MATH_UNICODE_CHARS = set("∑∂∇√≈≠≤≥±×÷∫∏∀∃∈∉⊂⊃∪∩→⇒⟨⟩‖‹›αβγδεζηθλμπρστφψω")
+# ─── Gutter Analysis (cải tiến 2-column detection) ───────────────────────────
+# Khoảng trắng dọc tối thiểu (points) để được coi là gutter giữa 2 cột.
+GUTTER_MIN_WIDTH_PT = 8.0
 
-# Nếu block text có tỉ lệ ký tự toán/tổng ký tự vượt ngưỡng này → 'math'.
-MATH_CHAR_RATIO_THRESHOLD = 0.03
+# Gutter phải xuất hiện ở vị trí X nằm trong vùng trung tâm trang này
+# (tránh nhầm lề trang thành gutter). Tỉ lệ trên chiều rộng trang.
+GUTTER_CENTER_ZONE = (0.3, 0.7)  # gutter phải nằm trong 30%-70% chiều rộng
+
+# Gutter phải có chiều cao liên tục chiếm ít nhất bao nhiêu % chiều cao trang.
+GUTTER_MIN_HEIGHT_RATIO = 0.4
+
+# ─── Heading Detection (font-based) ──────────────────────────────────────────
+# Khi font size của span vượt (body_size * ratio) thì coi là heading tương ứng.
+# Ví dụ: body_size=10pt, ratio=1.4 → span >= 14pt là H1.
+HEADING_FONT_RATIOS: dict[int, float] = {
+    1: 1.6,   # H1: >= 160% font body
+    2: 1.35,  # H2: >= 135% font body
+    3: 1.15,  # H3: >= 115% font body
+}
+
+# Số ký tự tối thiểu và tối đa để một span được coi là heading
+# (tránh đánh dấu số trang hoặc chữ đơn lẻ là heading)
+HEADING_MIN_CHARS = 3
+HEADING_MAX_CHARS = 200
+
+# ─── Math Detection (font-based) ─────────────────────────────────────────────
+# Các tên font chứa ký tự này thường là font toán học LaTeX.
+# PyMuPDF trả về tên font trong span["font"] hoặc span["fontname"].
+MATH_FONT_SUBSTRINGS: tuple[str, ...] = (
+    "CMMI",      # Computer Modern Math Italic — biến số toán học
+    "CMSY",      # Computer Modern Symbol
+    "CMEX",      # Computer Modern Math Extension (dấu ngoặc lớn, ký hiệu tổng)
+    # CMR bị loại bỏ: là font Roman chứ thường, dùng cho cả text lẫn số trong công thức
+    # → giữ lại sẽ khiến toàn bộ text bằng font LaTeX bị gán nhãn là MATH (false positive cao)
+    "MSAM",      # AMS Symbol A
+    "MSBM",      # AMS Symbol B (blackboard bold: ℝ, ℕ, ℤ)
+    "EUFM",      # Euler Fraktur Math
+    "RSFS",      # Ralph Smith Formal Script
+    "CMTI",      # Computer Modern Text Italic (dùng cho biến trong một số PDF)
+    "Symbol",    # Symbol font (Windows)
+    "MathJax",   # MathJax fonts trong PDF từ HTML
+    "STIX",      # STIX fonts
+    "MathTime",  # MathTime Professional
+    "Euler",     # Euler math fonts
+    "LMM",       # Latin Modern Math
+    "DejaVuMath",# DejaVu Math
+)
+
+# Các dấu câu/ký hiệu được phép "pass-through" giữa 2 span toán liền kề
+# (không cắt đứt nhóm toán chỉ vì có 1 dấu câu font text thường giữa 2 span math)
+MATH_PUNCT_CHARS: frozenset[str] = frozenset("()[]{}.,;:+=-_/*^|\\<>!?~\u2019\u2018\u201c\u201d\u00b4`")
+
+# Khoảng cách dọc tối đa (points) giữa 2 block MATH liên tiếp để được gộp thành 1 block
+# (giải quyết lỗi hàng chục [Formula block #n] rời rạc trong 1 trang)
+MATH_BLOCK_MERGE_GAP_PT = 14.0
+
+# Font monospace — dấu hiệu block là pseudocode / algorithm / code
+MONO_FONT_SUBSTRINGS: tuple[str, ...] = (
+    "Courier", "CourierNew", "Typewriter", "Mono", "CMTypewriter", "CMTT",
+    "LMMono", "Inconsolata", "SourceCode", "FiraMono", "RobotoMono",
+    "DejaVuSansMono", "UbuntuMono",
+)
+
+# Ngưỡng tối thiểu số cột của bảng để gửi OCR LaTeX tabular (thay vì Markdown)
+# Bảng có ít cột thường đơn giản → Markdown OK
+# Bảng có nhiều cột hoặc cụm cột phức tạp → LaTeX tabular tốt hơn
+TABLE_LATEX_MIN_COLS = 5
+
+# Tỉ lệ dồn mối monospace span để xếp là ALGORITHM block
+ALGORITHM_MONO_RATIO = 0.6
+
+# Kích thước tối đa DPI cho math block crop
+MATH_CROP_DPI = 200
+
+# Tỉ lệ tối thiểu của math span để block được xếp là MATH (thay vì TEXT)
+# Giảm xuống 0.75 (từ 0.85) để bắt được block toán có một vài nhãn text xết vào
+MATH_BLOCK_RATIO = 0.75
+
+# ─── Ký hiệu Unicode toán học ────────────────────────────────────────────────
+# Ký hiệu Unicode toán học trong text (backup khi không có font info).
+MATH_UNICODE_CHARS = set(
+    "∑∂∇√≈≠≤≥±×÷∫∏∀∃∈∉⊂⊃∪∩→⇒⟨⟩‖αβγδεζηθλμπρστφψωΑΒΓΔΕΖΗΘΛΜΠΡΣΤΦΨΩ"
+    "′″‴∞∝∼≃≅≡∓⊕⊗⊥∧∨¬⊢⊨⟹⟺∘∙·⁻¹²³⁴⁰½⅓"
+)
+
+# Ngưỡng tỉ lệ ký tự toán unicode trên tổng ký tự để fallback về Unicode detection.
+MATH_CHAR_RATIO_THRESHOLD = 0.05  # nâng từ 0.03 lên 0.05 để giảm false positive
+
+# Regex nhận diện số thứ tự phương trình ở cuối dòng: (1), (12), (A.3)
+# Đây là dấu hiệu mạnh cho display math block.
+IMPORT_RE_EQUATION_NUM = True  # dùng trong layout_detector, tránh import vòng tròn
+
+# Tỉ lệ chiều rộng tối thiểu của block so với page width để là full-width.
+FULL_WIDTH_RATIO = 0.65  # giảm từ 0.7 xuống 0.65 để bắt thêm tiêu đề section
 
 # ─── Postprocessor ───────────────────────────────────────────────────────────
 # Số trang cuối tính từ References section sẽ bị đánh dấu is_references=True.
