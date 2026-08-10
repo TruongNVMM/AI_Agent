@@ -1,0 +1,19 @@
+{
+  "total_files": 1,
+  "total_pages": 9,
+  "total_blocks": 160,
+  "ocr_blocks": 9,
+  "elapsed_sec": 6.06,
+  "documents": [
+    {
+      "doc_name": "Generative-Adversarial-Nets (GAN).pdf",
+      "total_pages": 9,
+      "total_blocks": 160,
+      "text_blocks": 145,
+      "table_blocks": 2,
+      "image_blocks": 2,
+      "math_blocks": 7,
+      "ocr_failed": 0
+    }
+  ]
+}

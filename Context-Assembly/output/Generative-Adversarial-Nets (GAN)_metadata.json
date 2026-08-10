@@ -1,0 +1,23 @@
+{
+  "doc_name": "Generative-Adversarial-Nets (GAN).pdf",
+  "total_pages": 9,
+  "total_blocks": 160,
+  "text_blocks": 145,
+  "table_blocks": 2,
+  "image_blocks": 2,
+  "math_blocks": 7,
+  "ocr_failed": 0,
+  "layout": "1-column",
+  "references_page": 8,
+  "section_map": {
+    "1": "arXiv:1406.2661v1  [stat.ML]  10 Jun 2014",
+    "2": "arXiv:1406.2661v1  [stat.ML]  10 Jun 2014 > 3Adversarial nets",
+    "3": "arXiv:1406.2661v1  [stat.ML]  10 Jun 2014 > 4Theoretical Results",
+    "4": "arXiv:1406.2661v1  [stat.ML]  10 Jun 2014 > 4Theoretical Results",
+    "5": "arXiv:1406.2661v1  [stat.ML]  10 Jun 2014 > 5Experiments",
+    "6": "arXiv:1406.2661v1  [stat.ML]  10 Jun 2014 > 5Experiments",
+    "7": "arXiv:1406.2661v1  [stat.ML]  10 Jun 2014 > 7Conclusions and future work",
+    "8": "arXiv:1406.2661v1  [stat.ML]  10 Jun 2014 > References",
+    "9": "arXiv:1406.2661v1  [stat.ML]  10 Jun 2014 > References"
+  }
+}

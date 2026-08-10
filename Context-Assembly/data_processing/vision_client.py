@@ -4,16 +4,9 @@ vision_client.py — Client gọi Ollama API cho Qwen2-VL 7B.
 Chiến lược chống OOM trên RTX 2080 Ti (11 GB VRAM):
 ──────────────────────────────────────────────────────
 1. Resize ảnh về ≤ OCR_MAX_IMAGE_SIZE px trước khi gửi.
-   Qwen2-VL tính VRAM theo số patch 28×28: ảnh 896×896 ≈ 1024 patch.
-   Gửi ảnh 1920×1080 sẽ cần ~4000 patch → dễ OOM.
-
 2. Chỉ gửi 1 request tại một thời điểm (OCR_CONCURRENT_REQUESTS=1).
-   Ollama giữ activation VRAM trong khi xử lý; 2 request song song
-   có thể nhân đôi peak VRAM lên ~9 GB → vượt 11 GB khi kể OS overhead.
-
-3. num_ctx=2048 thay vì 4096 mặc định → tiết kiệm ~0.5 GB KV cache.
-
-4. Dùng OLLAMA_FLASH_ATTENTION=1 (env var) → giảm KV cache thêm 40%.
+3. num_ctx=2048 thay vì 4096 mặc định.
+4. Dùng OLLAMA_FLASH_ATTENTION=1 (env var).
 """
 
 from __future__ import annotations
@@ -28,60 +21,127 @@ import requests
 from PIL import Image
 
 from .config import (
+    OCR_MAX_IMAGE_SIZE,
     OLLAMA_BASE_URL,
     OLLAMA_MAX_RETRIES,
     OLLAMA_OPTIONS,
     OLLAMA_TIMEOUT_SEC,
-    OCR_MAX_IMAGE_SIZE,
     QWEN2_VL_MODEL,
 )
 
 log = logging.getLogger(__name__)
 
-# ─── Prompts ────────────────────────────────────────────────────────────────
+# ─── Prompts cho từng chế độ ────────────────────────────────────────────────
 
 _PROMPT_IMAGE = """\
-You are an expert at analyzing academic figures and charts.
-Examine this image carefully and provide a concise markdown description.
+You are an expert at analyzing academic figures and images.
+Examine this image carefully and provide a concise description.
 
 Rules:
-- If it is a chart/graph: describe axes, key trends, and main findings in 2-4 sentences.
-- If it is a diagram/architecture: describe the components and data flow briefly.
-- If it is a table rendered as image: transcribe it as a markdown table.
-- If it is a photo or decorative image: write one descriptive sentence.
-- Do NOT add preamble like "This image shows..." — start directly with the content.
-- Wrap your response in a markdown blockquote: > [Figure] ...
+- If it is a diagram or architectural diagram: describe main components and flow in 2-3 sentences.
+- If it is a photo or illustration: write one concise descriptive sentence.
+- Do NOT add preamble like "This image shows..." — start directly with content.
+- Wrap your response in a blockquote: > [Image] ...
+"""
+
+_PROMPT_FIGURE = """\
+You are an expert data analyst and computer vision specialist.
+Examine this academic chart, graph, or plot image.
+
+STRICT INSTRUCTIONS:
+1. Identify chart type (e.g. Bar Chart, Line Graph, Scatter Plot, Heatmap, Confusion Matrix).
+2. Summarize key findings, axes, units, and main trends in 2-3 concise sentences.
+3. If data values or a data table can be extracted accurately from the chart/plot, provide a compact Markdown table below the summary.
+4. Format:
+   > **[Figure Analysis]** <Summary of trends and key findings>
+
+   | <Axis/Category> | <Value/Metric> |
+   | --- | --- |
 """
 
 _PROMPT_MATH = """\
-You are an expert LaTeX typesetter.
-Convert the mathematical formula or equation in this image to LaTeX.
+You are an expert LaTeX typesetter specializing in mathematical notation.
+Convert the mathematical content in this image to clean, accurate LaTeX.
 
-Rules:
-- Return ONLY the LaTeX expression — no explanation, no prose.
-- Wrap display equations in $$...$$
-- Wrap inline formulas in $...$
-- If there are multiple equations, separate them with a blank line.
-- If the image is not a formula, return: [Non-math content]
+STRICT RULES:
+1. Return ONLY LaTeX — no explanation, no prose, no preamble like "The equation is...".
+2. Display equations (standalone, centered): wrap in $$...$$
+   Example: $$\\frac{\\partial L}{\\partial \\theta} = \\sum_{i=1}^{N} x_i$$
+3. Inline formulas or simple expressions: wrap in $...$
+   Example: $f(x) = ax^2 + bx + c$
+4. Multiple equations separated by blank lines:
+   $$E = mc^2$$
+   
+   $$F = ma$$
+5. If there is an equation number like (1) or (3.2) at the right margin, include it:
+   $$\\mathcal{L}(\\theta) = \\mathbb{E}[\\log p(x)] \\tag{1}$$
+6. Align environments for multi-line equations:
+   $$\\begin{aligned}
+     a &= b + c \\\\
+     &= d + e
+   \\end{aligned}$$
+7. Greek letters: \\alpha \\beta \\gamma \\theta \\sigma \\mu \\lambda \\omega \\nabla \\partial
+8. Common operators: \\sum \\prod \\int \\frac{}{} \\sqrt{} \\mathbb{} \\mathcal{} \\text{}
+9. If the image contains only text (not math), return: [Non-math content]
+10. If the image is too blurry to read, return: [Unreadable math]
 """
+
+_PROMPT_TABLE_COMPLEX = """\
+You are an expert in academic document transcription.
+Convert the table image into a clean LaTeX tabular environment.
+
+STRICT RULES:
+1. Return ONLY LaTeX table code (or Markdown table if simple) — no commentary or preamble.
+2. Use standard LaTeX tabular format with booktabs rules where applicable:
+   \\begin{tabular}{l c r}
+     \\toprule
+     Header 1 & Header 2 & Header 3 \\\\
+     \\midrule
+     Row 1 & Value 1 & Value 2 \\\\
+     \\bottomrule
+   \\end{tabular}
+3. Preserve math symbols in cells inside $...$.
+4. Ensure merged cells (multi-column / multi-row) are correctly represented using \\multicolumn or \\multirow if present.
+"""
+
+_PROMPT_ALGORITHM = """\
+You are an expert in computer science algorithm transcription.
+Convert this algorithm / pseudocode box image into clean, structured pseudocode.
+
+STRICT RULES:
+1. Return ONLY the code inside a fenced code block with `algorithm` language specifier:
+   ```algorithm
+   Input: ...
+   Output: ...
+   1: for i = 1 to N do
+   2:     update theta
+   ```
+2. Maintain exact indentation and line numbering as shown in the image.
+3. Preserve mathematical variables using standard notation.
+4. Do NOT add explanation before or after the code block.
+"""
+
+OCRMode = Literal["image", "figure", "math", "table_complex", "table_simple", "algorithm", "text"]
+
+_PROMPT_MAP: dict[str, str] = {
+    "image":         _PROMPT_IMAGE,
+    "figure":        _PROMPT_FIGURE,
+    "math":          _PROMPT_MATH,
+    "table_complex": _PROMPT_TABLE_COMPLEX,
+    "table_simple":  _PROMPT_TABLE_COMPLEX,
+    "algorithm":     _PROMPT_ALGORITHM,
+    "text":          _PROMPT_MATH,
+}
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
 def _resize_image_bytes(image_bytes: bytes, max_size: int = OCR_MAX_IMAGE_SIZE) -> bytes:
-    """
-    Resize ảnh sao cho cạnh dài nhất ≤ max_size pixel.
-    Giữ nguyên aspect ratio. Trả về PNG bytes.
-
-    Đây là bước quan trọng nhất để kiểm soát VRAM:
-    - Ảnh 2000×1000 px → 60% VRAM hơn ảnh 896×448 px cùng nội dung.
-    - Qwen2-VL vẫn nhận ra nội dung tốt ở 768-896 px.
-    """
+    """Resize ảnh sao cho cạnh dài nhất ≤ max_size pixel."""
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     w, h = img.size
 
     if max(w, h) <= max_size:
-        # Không cần resize, trả về bytes gốc (tránh re-encode lãng phí)
         return image_bytes
 
     if w >= h:
@@ -104,10 +164,10 @@ def _bytes_to_base64(data: bytes) -> str:
 
 def _build_payload(
     image_b64: str,
-    mode: Literal["image", "math"],
+    mode: OCRMode,
 ) -> dict:
     """Xây dựng request payload cho Ollama /api/generate."""
-    prompt = _PROMPT_IMAGE if mode == "image" else _PROMPT_MATH
+    prompt = _PROMPT_MAP.get(mode, _PROMPT_IMAGE)
     return {
         "model":   QWEN2_VL_MODEL,
         "prompt":  prompt,
@@ -121,19 +181,18 @@ def _build_payload(
 
 def call_qwen2_vl(
     image_bytes: bytes,
-    mode: Literal["image", "math"],
+    mode: OCRMode = "image",
 ) -> str:
     """
-    Gọi Ollama Qwen2-VL với ảnh PNG bytes và trả về chuỗi markdown.
+    Gọi Ollama Qwen2-VL với ảnh PNG bytes và trả về chuỗi markdown/LaTeX.
 
     Args:
         image_bytes: PNG bytes của vùng ảnh cần OCR.
-        mode: "image" (mô tả đồ thị/hình ảnh) hoặc "math" (chuyển sang LaTeX).
+        mode: Chế độ OCR ("math", "figure", "table_complex", "algorithm", "image").
 
     Returns:
         Chuỗi markdown / LaTeX. Nếu thất bại sau retries → "[OCR Failed]".
     """
-    # Resize trước khi encode để tránh gửi ảnh quá lớn lên Ollama
     try:
         resized = _resize_image_bytes(image_bytes)
     except Exception as exc:
@@ -158,7 +217,7 @@ def call_qwen2_vl(
             if response.status_code == 200:
                 data   = response.json()
                 result = data.get("response", "").strip()
-                log.debug("Ollama phản hồi trong %.1fs, %d chars", elapsed, len(result))
+                log.debug("Ollama phản hồi [%s] trong %.1fs, %d chars", mode, elapsed, len(result))
                 return result
 
             log.warning(
@@ -178,7 +237,7 @@ def call_qwen2_vl(
             log.warning("Lỗi không mong đợi khi gọi Ollama (lần %d): %s", attempt, exc)
 
         if attempt < OLLAMA_MAX_RETRIES:
-            wait = 2 ** attempt  # Exponential backoff: 2s, 4s
+            wait = 2 ** attempt
             log.info("Thử lại sau %ds...", wait)
             time.sleep(wait)
 

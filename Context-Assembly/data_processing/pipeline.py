@@ -23,7 +23,7 @@ from pathlib import Path
 import fitz
 
 from .config import CPU_PDF_WORKERS, OUTPUT_DIR, IMAGE_DIR
-from .layout_detector import classify_document_layout
+from .layout_detector import classify_document_layout, classify_page_layout
 from .models import DocumentResult, PageResult
 from .page_processor import process_page
 from .postprocessor import postprocess_document
@@ -63,21 +63,35 @@ def process_document(
 
     try:
         doc    = fitz.open(pdf_path)
-        layout = classify_document_layout(doc)
-        log.info("[%s] Layout: %s | %d pages", doc_name, layout, len(doc))
+        # Phân loại layout tài liệu (vote đa số trên các trang sample)
+        doc_layout = classify_document_layout(doc)
+        log.info("[%s] Doc layout: %s | %d pages", doc_name, doc_layout, len(doc))
 
         pages_markdown_raw: list[str] = []
         page_results: list[PageResult] = []
 
-        # ── Xử lý từng trang tuần tự ─────────────────────────────────────────
-        # (OCR là bottleneck; không lợi gì khi song song hóa trong cùng process)
+        # ── Xử lý từng trang tuần tự ──────────────────────────────────────────
         for page_num in range(1, len(doc) + 1):
-            page   = doc[page_num - 1]
-            pr     = process_page(
+            page = doc[page_num - 1]
+
+            # Phân loại layout từng trang riêng biệt để lấy gutter_x chính xác
+            # (ví dụ: trang 1 có thể là 1-col, trang 2+ là 2-col)
+            page_layout, gutter_x = classify_page_layout(page)
+            # Fallback về doc_layout nếu trang hiện tại không xác định được
+            if page_num == 1 and page_layout == "1-column" and doc_layout == "2-column":
+                # Trang đầu thường là title page 1-col — giữ yầu 1-col cho trang này
+                effective_layout = "1-column"
+                effective_gutter = None
+            else:
+                effective_layout = page_layout
+                effective_gutter = gutter_x
+
+            pr = process_page(
                 page=page,
                 page_num=page_num,
                 doc_name=doc_name,
-                layout=layout,
+                layout=effective_layout,
+                gutter_x=effective_gutter,
                 skip_ocr=skip_ocr,
             )
             page_results.append(pr)
@@ -113,7 +127,7 @@ def process_document(
             f"title: \"{stem}\"\n"
             f"source: \"{doc_name}\"\n"
             f"pages: {len(doc)}\n"
-            f"layout: \"{layout}\"\n"
+            f"layout: \"{doc_layout}\"\n"
             f"---\n"
         )
 
@@ -129,7 +143,7 @@ def process_document(
         # Ghi metadata JSON
         meta = {
             **result.summary(),
-            "layout":           layout,
+            "layout":           doc_layout,
             "references_page":  doc_metadata.get("references_page"),
             "section_map":      {str(k): v for k, v in doc_metadata["section_map"].items()},
         }

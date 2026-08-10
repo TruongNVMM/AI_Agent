@@ -28,6 +28,7 @@ def process_page(
     page_num: int,
     doc_name: str,
     layout: str,
+    gutter_x: float | None = None,
     skip_ocr: bool = False,
 ) -> PageResult:
     """
@@ -38,6 +39,7 @@ def process_page(
         page_num:  Số trang (1-indexed).
         doc_name:  Tên tài liệu (dùng trong log).
         layout:    "1-column" hoặc "2-column".
+        gutter_x:  Tọa độ X trung tâm gutter (chỉ dùng cho 2-column), từ classify_page_layout.
         skip_ocr:  Nếu True, bỏ qua Ollama OCR (dùng khi dry-run hoặc offline).
 
     Returns:
@@ -46,7 +48,7 @@ def process_page(
     log.info("[%s] Xử lý trang %d (layout: %s)...", doc_name, page_num, layout)
 
     # ── 1. Phân đoạn và sắp xếp blocks ──────────────────────────────────────
-    blocks: list[DocumentBlock] = segment_page(page, page_num, layout)
+    blocks: list[DocumentBlock] = segment_page(page, page_num, layout, gutter_x=gutter_x)
 
     if not blocks:
         log.debug("[%s] Trang %d không có block nào.", doc_name, page_num)
